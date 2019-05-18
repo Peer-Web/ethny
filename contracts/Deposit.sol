@@ -1,6 +1,8 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
+import "./math/Math.sol";
+
 contract Commitment {
    struct Range {
     uint256 start;
@@ -50,7 +52,7 @@ contract Deposit {
 
   struct Checkpoint {
     StateUpdate stateUpdate;
-    Range chekcpointedRange;
+    Range checkpointedRange;
   }
 
   struct CheckpointStatus {
@@ -201,8 +203,24 @@ contract Deposit {
     emit LimboCheckpointStarted(checkpointId, _stateUpdate.plasmaBlockNumber);
   }
 
-  function challengeCheckpointOutdated(bytes32 _olderCheckpoint, bytes32 _newerCheckpoint) private {
-    // TODO 
+  function challengeCheckpointOutdated(Checkpoint memory _olderCheckpoint, Checkpoint memory _newerCheckpoint) private {
+    // Ensure checkpoint ranges intersect
+    require(Math.max(_olderCheckpoint.checkpointedRange.start, _newerCheckpoint.checkpointedRange.start) < Math.min(_olderCheckpoint.checkpointedRange.end, _newerCheckpoint.checkpointedRange.end));
+
+    // Ensure that the plasma blocknumber of the olderCheckpoint is less than that of newerCheckpoint.
+    require(_olderCheckpoint.stateUpdate.plasmaBlockNumber < _newerCheckpoint.stateUpdate.plasmaBlockNumber);
+
+    // Ensure that the newerCheckpoint has no challenges.
+    bytes32 checkpointId = getCheckpointId(_newerCheckpoint.stateUpdate, _newerCheckpoint.stateUpdate.range);
+    require(checkpoints[checkpointId].outstandingChallenges == 0);
+    
+    // Ensure that the newerCheckpoint is no longer challengeable.
+    require(checkpoints[checkpointId].challengeableUntil < block.number + CHALLENGE_PERIOD);
+
+    // Delete the entries in exits and checkpoints at the olderCheckpointId
+    // delete exits
+    delete checkpoints[checkpointId];
+    delete exitsRedeemableAfter[checkpointId];
   }
 
   function challengeCheckpointInvalid(Challenge memory _challenge) private {
@@ -218,15 +236,15 @@ contract Deposit {
     // TODO
   }
 
-  function removeChallengeCheckpointInvalidHistory(bytes32 _challenge) private {
+  function removeChallengeCheckpointInvalidHistory(Challenge memory _challenge) private {
     // TODO 
   }
 
-  function startExit(bytes32 _checkpoint, bytes memory _witness) private {
+  function startExit(Challenge memory _checkpoint, bytes memory _witness) private {
     // TODO
   }
 
-  function challengeExitDeprecated(bytes32 _checkpoint, bytes memory _transaction, bytes memory _inclusionProof) private {
+  function challengeExitDeprecated(Challenge memory _checkpoint, bytes memory _transaction, bytes memory _inclusionProof) private {
     // TODO
   }
 
