@@ -1,6 +1,26 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
+contract Commitment {
+   struct Range {
+    uint256 start;
+    uint256 end;
+  }
+
+  struct StateObject {
+    address predicateAddress;
+    bytes data;
+  }
+
+  struct StateUpdate {
+    Range range;
+    StateObject stateObject;
+    address plasmaContract;
+    uint256 plasmaBlockNumber;
+  }
+    function verifyInclusion(StateUpdate memory _stateUpdate, bytes memory _inclusionProof) public returns (bool) {}
+}
+
 
 /**
  * @title Deposit
@@ -47,8 +67,8 @@ contract Deposit {
   // TODO - Set defaults
   address public constant COMMITMENT_ADDRESS = 0x99EF1a332003a2c93a9f228fd7966CECDE344bcC;
   address public constant TOKEN_ADDRESS = 0xF6c105ED2f0f5Ffe66501a4EEdaD86E10df19054;
-  uint256 public constant CHALLENGE_PERIOD = 0;
-  uint256 public constant EXIT_PERIOD = 0;
+  uint256 public constant CHALLENGE_PERIOD = 10;
+  uint256 public constant EXIT_PERIOD = 20;
 
   /*** Public ***/
   uint256 public totalDeposited;
@@ -59,6 +79,11 @@ contract Deposit {
   mapping (bytes32 => bool) public challengeStatuses;
 
   event CheckpointStarted(
+    bytes32 checkpoint,
+    uint256 challengePeriodStart
+  );
+
+  event LimboCheckpointStarted(
     bytes32 checkpoint,
     uint256 challengePeriodStart
   );
@@ -81,17 +106,75 @@ contract Deposit {
     bytes32 exit
   );
 
+  /* 
+  * TODO - Methods in this section need to be moved to external contracts
+  */ 
+  function verifyInclusion(StateUpdate memory _stateUpdate, bytes memory _inclusionProof) private returns (bool) {
+    return true;
+  }
+
+  // TODO - Implement verification
+  function verifySubRange(Range memory _range, Range memory _checkpointedRange) private returns (bool) {
+    return true;
+  }
+
+  function executeTransaction(StateUpdate memory _stateUpdate, bytes memory _transaction) private returns (StateUpdate memory) {
+    return _stateUpdate;
+  }
+
+  function getLatestPlasmaBlockNumber() private returns (uint256) {
+    return 0;
+  }
+
+  /* 
+  ** End Section **
+  */
+
     /**
    * @notice 
    * @param _amount TODO
    * @param _initialState  TODO
    */
   function deposit(uint256 _amount, StateObject memory _initialState) public {
-    // TODO
+    // TODO - Requires?
+    Range memory depositRange = Range({start:totalDeposited, end: totalDeposited + _amount });
+
+    StateUpdate memory stateUpdate = StateUpdate({
+      range: depositRange, stateObject: _initialState, 
+      plasmaContract: address(this), plasmaBlockNumber: getLatestPlasmaBlockNumber() 
+    });
+
+    // TODO - Handle deposit?
+    totalDeposited += _amount;
+
+    bytes32 checkpointId = getCheckpointId(stateUpdate, stateUpdate.range);
+    CheckpointStatus memory status = CheckpointStatus({challengeableUntil: block.number + CHALLENGE_PERIOD, outstandingChallenges: 0});
+    checkpoints[checkpointId] = status;
+    
+    emit CheckpointFinalized(checkpointId);
   }
 
+  /* 
+  * Helpers
+  */ 
+  function getCheckpointId(StateUpdate memory _stateUpdate, Range memory _range) private returns (bytes32) {
+    return keccak256(abi.encode(_stateUpdate, _range));
+  }
+
+  // TODO - setCheckpoint function with logic below
+  // bytes32 checkpointId = getCheckpointId(_stateUpdate, _checkpointedRange);
+  // CheckpointStatus memory status = CheckpointStatus({challengeableUntil: block.number + CHALLENGE_PERIOD, outstandingChallenges: 0});
+  // checkpoints[checkpointId] = status;
+
   function startCheckpoint(StateUpdate memory _stateUpdate, bytes memory _inclusionProof, Range memory _checkpointedRange) public {
-    // TODO 
+    require(verifyInclusion(_stateUpdate, _inclusionProof));
+    require(verifySubRange(_stateUpdate.range, _checkpointedRange));
+
+    bytes32 checkpointId = getCheckpointId(_stateUpdate, _checkpointedRange);
+    CheckpointStatus memory status = CheckpointStatus({challengeableUntil: block.number + CHALLENGE_PERIOD, outstandingChallenges: 0});
+    checkpoints[checkpointId] = status;
+
+    emit CheckpointStarted(checkpointId, _stateUpdate.plasmaBlockNumber);
   }
 
   function startLimboCheckpoint(
@@ -101,7 +184,21 @@ contract Deposit {
     Range memory _checkpointedRange
   ) private 
   {
-    // TODO 
+    require(verifyInclusion(_stateUpdate, _inclusionProof));
+
+    // MUST execute transaction against stateUpdate by calling the state update’s predicate.
+
+    require(verifySubRange(_stateUpdate.range, _checkpointedRange));
+    StateUpdate memory outputState = executeTransaction(_stateUpdate, _transaction);
+
+    bytes32 checkpointId = getCheckpointId(_stateUpdate, _checkpointedRange);
+    CheckpointStatus memory status = CheckpointStatus({challengeableUntil: block.number + CHALLENGE_PERIOD, outstandingChallenges: 0});
+    checkpoints[checkpointId] = status;
+
+    limboCheckpointOrigins[checkpointId] = _stateUpdate;
+
+    // TODO - Doublecheck vars
+    emit LimboCheckpointStarted(checkpointId, _stateUpdate.plasmaBlockNumber);
   }
 
   function challengeCheckpointOutdated(bytes32 _olderCheckpoint, bytes32 _newerCheckpoint) private {
