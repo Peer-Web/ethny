@@ -1,0 +1,48 @@
+{
+  "name": "@pg/ethny",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "./node_modules/.bin/babel src -d dist -s",
+    "build:docs": "esdoc -c .esdoc.json",
+    "test": "truffle test --network development",
+    "compile": "rm -rf build/contracts; truffle compile",
+    "migrate": "truffle migrate",
+    "deploy": "npm run migrate --network development",
+    "ganache": "ganache-cli -i 1234 -m='oyster virtual frown glove protect elder bottom organ axis replace project sweet'"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "web3-utils": "1.0.0-beta.37"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.2.2",
+    "@babel/plugin-proposal-class-properties": "^7.2.3",
+    "@babel/plugin-proposal-object-rest-spread": "^7.2.0",
+    "@babel/plugin-transform-runtime": "^7.2.0",
+    "@babel/polyfill": "^7.2.5",
+    "@babel/preset-env": "^7.2.3",
+    "@babel/register": "^7.0.0",
+    "@babel/runtime": "^7.2.0",
+    "babel-eslint": "^10.0.1",
+    "chai": "^4.2.0",
+    "cross-env": "^5.2.0",
+    "dotenv": "^6.2.0",
+    "eslint": "^5.12.0",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-config-prettier": "^3.4.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-jsx-a11y": "^6.1.2",
+    "eslint-plugin-prettier": "^3.0.1",
+    "eslint-plugin-react": "^7.12.3",
+    "jsdoc": "^3.5.5",
+    "mocha": "^5.2.0",
+    "nyc": "^13.1.0",
+    "prettier": "1.15.3",
+    "push-dir": "^0.4.1",
+    "sinon": "^7.2.3",
+    "truffle": "^5.0.3",
+    "truffle-hdwallet-provider": "0.0.3"
+  }
+}
